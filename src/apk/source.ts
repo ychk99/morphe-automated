@@ -1,0 +1,59 @@
+import { Effect, Predicate, Result } from "effect";
+import type { AppConfig } from "../config/schema.ts";
+import { ApkNotFound, type SourceBlocked, type VerificationError } from "../domain/errors.ts";
+import type { VariantKind } from "./apkmirror-parse.ts";
+
+export interface ApkRequest {
+  readonly packageName: string;
+  readonly version: string;
+  readonly arch: string;
+  /** From the patch list: `APK_REQUIRED` demands a plain APK. */
+  readonly apkFileType: string | null;
+  readonly download: AppConfig["download"];
+  /** Where to put the file, without an extension. */
+  readonly destination: string;
+}
+
+export interface ApkFile {
+  readonly source: string;
+  readonly kind: VariantKind;
+  readonly path: string;
+  readonly sha256: string;
+  readonly size: number;
+}
+
+/** What one source can fail with. `SourceBlocked`/`ApkNotFound` move on to the next source. */
+export type ApkSourceError = SourceBlocked | ApkNotFound | VerificationError;
+
+export interface ApkSource<R = never> {
+  readonly name: string;
+  readonly fetch: (request: ApkRequest) => Effect.Effect<ApkFile, ApkSourceError, R>;
+}
+
+/**
+ * Try each source in order; a blocked or empty source just moves on to the next. A source that
+ * downloaded something and failed verification stops the search: falling back would produce a
+ * different artifact under the same fingerprint.
+ */
+export const fetchApk = Effect.fn("fetchApk")(function* (
+  sources: ReadonlyArray<ApkSource>,
+  request: ApkRequest,
+) {
+  const failures: string[] = [];
+
+  for (const source of sources) {
+    const result = yield* Effect.result(source.fetch(request));
+
+    if (Result.isSuccess(result)) return result.success;
+
+    if (Predicate.isTagged(result.failure, "VerificationError")) return yield* result.failure;
+
+    yield* Effect.logWarning(`${source.name}: ${result.failure.message}`);
+    failures.push(`${source.name}: ${result.failure.message}`);
+  }
+
+  return yield* new ApkNotFound({
+    source: "all",
+    message: `${request.packageName} ${request.version} unavailable (${failures.join("; ") || "no sources configured"})`,
+  });
+});
