@@ -2,6 +2,11 @@ name = "YouTube"
 package = "com.google.android.youtube"
 sources = ["morphe"]
 
+[patches]
+# Already on by default, so the app is unchanged. Listing it changes the config hash,
+# which made the build publish a new release for the Obtainium auto-update test (25 Oct 2026).
+enable = ["Copy video link"]
+
 [download]
 apkmirror = "google-inc/youtube"
 uptodown = "youtube"
