@@ -1,4 +1,3 @@
-enabled = false
 name = "YouTube Music"
 package = "com.google.android.apps.youtube.music"
 sources = ["morphe"]
