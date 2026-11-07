@@ -5,3 +5,9 @@ sources = ["morphe"]
 [download]
 apkmirror = "google-inc/youtube-music"
 uptodown = "youtube-music"
+
+# Stock name and icon. Morphe otherwise names the app "YT Music Morphe" in system settings and
+# notifications and shows its own icon there; the in-app branding setting only reaches the launcher.
+[patches]
+enable = ["Custom branding"]
+options = { appIcon = "original", customName = "YouTube Music" }

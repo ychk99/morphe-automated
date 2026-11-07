@@ -63,11 +63,25 @@ describe("signing.toml", () => {
 
 describe("app defaults", () => {
   it("fills in arm64, stable-only and empty patch selection", async () => {
-    const app = await Effect.runPromise(parseApp("youtube", read("apps/youtube.toml")));
+    const app = await Effect.runPromise(
+      parseApp("app", 'name = "App"\npackage = "x"\nsources = ["morphe"]\n[download]\n'),
+    );
+
     expect(app.config.enabled).toBe(true);
     expect(app.config.arch).toBe("arm64-v8a");
     expect(app.config.allow_experimental).toBe(false);
     expect(app.config.patches).toEqual({ enable: [], disable: [], exclusive: false, options: {} });
+  });
+
+  it("reads YouTube's stock name and icon options", async () => {
+    const app = await Effect.runPromise(parseApp("youtube", read("apps/youtube.toml")));
+
+    expect(app.config.patches).toEqual({
+      enable: ["Custom branding"],
+      disable: [],
+      exclusive: false,
+      options: { appIcon: "original", customName: "YouTube" },
+    });
   });
 
   it("reads Brave's github release assets", async () => {
@@ -105,7 +119,7 @@ describe("configHash", () => {
     const patched = await Effect.runPromise(
       parseApp(
         "youtube",
-        read("apps/youtube.toml").replace("[download]", '[patches]\ndisable = ["x"]\n[download]'),
+        read("apps/youtube.toml").replace("[patches]", '[patches]\ndisable = ["x"]'),
       ),
     );
 
